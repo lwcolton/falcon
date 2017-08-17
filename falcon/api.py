@@ -14,6 +14,11 @@
 
 """Falcon API class."""
 
+asyncio = None
+try:
+    import asyncio
+except:
+    pass
 import re
 
 import six
@@ -182,7 +187,16 @@ class API(object):
                 status and headers on a response.
 
         """
+        if not asyncio:
+            body = self.call(env, start_response)
+            # Return the response per the WSGI spec.
+            start_response(resp_status, headers)
+        else:
+            event_loop = asyncio.get_event_loop()
 
+
+
+    def call(self, env, start_response):
         req = self._request_type(env, options=self.req_options)
         resp = self._response_type(options=self.resp_options)
         resource = None
@@ -283,8 +297,6 @@ class API(object):
 
         headers = resp._wsgi_headers(media_type)
 
-        # Return the response per the WSGI spec.
-        start_response(resp_status, headers)
         return body
 
     @property
