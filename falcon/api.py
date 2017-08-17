@@ -14,11 +14,7 @@
 
 """Falcon API class."""
 
-asyncio = None
-try:
-    import asyncio
-except:
-    pass
+
 import re
 
 import six
@@ -145,12 +141,13 @@ class API(object):
     __slots__ = ('_request_type', '_response_type',
                  '_error_handlers', '_media_type', '_router', '_sinks',
                  '_serialize_error', 'req_options', 'resp_options',
-                 '_middleware', '_independent_middleware', '_router_search')
+                 '_middleware', '_independent_middleware', '_router_search',
+                 'asyncio_enabled', '_event_loop', '_async_call')
 
     def __init__(self, media_type=DEFAULT_MEDIA_TYPE,
                  request_type=Request, response_type=Response,
                  middleware=None, router=None,
-                 independent_middleware=False):
+                 independent_middleware=False, enable_asyncio=False):
         self._sinks = []
         self._media_type = media_type
 
@@ -178,6 +175,17 @@ class API(object):
         self.add_error_handler(falcon.HTTPError, self._http_error_handler)
         self.add_error_handler(falcon.HTTPStatus, self._http_status_handler)
 
+        self.asyncio_enabled = enable_asyncio
+        if enable_asyncio is True:
+            import asyncio
+            self._event_loop = asyncio.get_event_loop()
+
+            @asyncio.coroutine
+            def _async_call(api, *args):
+                return api._call(*args)
+
+            self._async_call = _async_call
+
     def __call__(self, env, start_response):  # noqa: C901
         """WSGI `app` method.
 
@@ -193,16 +201,12 @@ class API(object):
                 status and headers on a response.
 
         """
-        if not asyncio:
-            body = self.call(env, start_response)
-            # Return the response per the WSGI spec.
-            start_response(resp_status, headers)
+        if self.asyncio_enabled is not True:
+            return self._call(env, start_response)
         else:
-            event_loop = asyncio.get_event_loop()
+            return self._event_loop.run_until_complete(self._async_call(env, start_response))
 
-
-
-    def call(self, env, start_response):
+    def _call(self, env, start_response):
         req = self._request_type(env, options=self.req_options)
         resp = self._response_type(options=self.resp_options)
         resource = None
@@ -303,8 +307,10 @@ class API(object):
 
         headers = resp._wsgi_headers(media_type)
 
+        # Return the response per the WSGI spec.
+        start_response(resp_status, headers)
         return body
-
+    
     @property
     def router_options(self):
         return self._router.options
