@@ -13,12 +13,16 @@ architectural style, and tries to do as little as possible while
 remaining highly effective.
 
 Falcon apps work with any WSGI server, and run great under
-CPython 2.7, PyPy, and CPython 3.3+.
+CPython 2.6-2.7, PyPy 2.7, Jython 2.7, and CPython 3.3+.
+
+(Note: Support for CPython 2.6 and Jython 2.7 is deprecated and will be
+removed in Falcon 2.0.)
 
 Quick Links
 -----------
 
 * `Read the docs <https://falcon.readthedocs.io/en/stable>`__
+* `Falcon add-ons and complimentary packages <https://github.com/falconry/falcon/wiki>`__
 * `falconry/user <https://gitter.im/falconry/user>`__ @ Gitter
 * `falconry/dev <https://gitter.im/falconry/dev>`__ @ Gitter
 

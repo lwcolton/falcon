@@ -63,10 +63,18 @@ class Response(object):
                 codes. They all start with the ``HTTP_`` prefix, as in:
                 ``falcon.HTTP_204``.
 
-        body (str or unicode): String representing response content. If
-            Unicode, Falcon will encode as UTF-8 in the response. If
-            data is already a byte string, use the data attribute
-            instead (it's faster).
+        media (object): A serializable object supported by the media handlers
+            configured via :class:`falcon.RequestOptions`.
+
+            See :ref:`media` for more information regarding media handling.
+
+        body (str or unicode): String representing response content.
+
+            If set to a Unicode type (``unicode`` in Python 2, or
+            ``str`` in Python 3), Falcon will encode the text as UTF-8
+            in the response. If the content is already a byte string,
+            use the :attr:`data` attribute instead (it's faster).
+
         data (bytes): Byte string representing response content.
 
             Use this attribute in lieu of `body` when your content is
@@ -88,11 +96,6 @@ class Response(object):
                 ensure Unicode characters are properly encoded in the
                 HTTP response.
 
-        media (object): A serializable object supported by the media handlers
-            configured via :class:`falcon.RequestOptions`.
-
-            See :ref:`media` for more information regarding media handling.
-
         stream: Either a file-like object with a `read()` method that takes
             an optional size argument and returns a block of bytes, or an
             iterable object, representing response content, and yielding
@@ -104,6 +107,7 @@ class Response(object):
             Content-Length header to the WSGI server. Consequently, the
             server may choose to use chunked encoding or one of the
             other strategies suggested by PEP-3333.
+
         context (dict): Dictionary to hold any data about the response which is
             specific to your app. Falcon itself will not interact with this
             attribute after it has been initialized.
@@ -137,13 +141,13 @@ class Response(object):
     )
 
     # Child classes may override this
-    context_type = None
+    context_type = dict
 
     def __init__(self, options=None):
         self.status = '200 OK'
         self._headers = {}
 
-        self.options = ResponseOptions() if options is None else options
+        self.options = options if options else ResponseOptions()
 
         # NOTE(tbug): will be set to a SimpleCookie object
         # when cookie is set via set_cookie
@@ -155,11 +159,7 @@ class Response(object):
         self.stream = None
         self.stream_len = None
 
-        if self.context_type is None:
-            # PERF(kgriffs): The literal syntax is more efficient than dict().
-            self.context = {}
-        else:
-            self.context = self.context_type()
+        self.context = self.context_type()
 
     @property
     def media(self):
@@ -509,7 +509,7 @@ class Response(object):
                  anchor=None, hreflang=None, type_hint=None):
         """Add a link header to the response.
 
-        See also: https://tools.ietf.org/html/rfc5988
+        (See also: RFC 5988, Section 1)
 
         Note:
             Calling this method repeatedly will cause each link to be
@@ -524,8 +524,9 @@ class Response(object):
                 link. Will be converted to a URI, if necessary, per
                 RFC 3987, Section 3.1.
             rel (str): Relation type of the link, such as "next" or
-                "bookmark". See also http://goo.gl/618GHr for a list
-                of registered link relation types.
+                "bookmark".
+
+                (See also: http://www.iana.org/assignments/link-relations/link-relations.xhtml)
 
         Keyword Args:
             title (str): Human-readable label for the destination of
@@ -661,7 +662,7 @@ class Response(object):
             case, raising ``falcon.HTTPRangeNotSatisfiable`` will do the right
             thing.
 
-            See also: http://goo.gl/Iglhp
+        (See also: RFC 7233, Section 4.2)
         """,
         format_range)
 
@@ -669,11 +670,13 @@ class Response(object):
         'Content-Type',
         """Sets the Content-Type header.
 
-        Note:
-            You can use the following predefined content types: ``falcon.MEDIA_JSON``,
-            ``falcon.MEDIA_HTML``, ``falcon.MEDIA_JS``, ``falcon.MEDIA_XML``,
-            ``falcon.MEDIA_TEXT``, ``falcon.MEDIA_JPEG``, ``falcon.MEDIA_PNG``,
-            ``falcon.MEDIA_YAML`` and ``MEDIA_MSGPACK``
+        The ``falcon`` module provides a number of constants for
+        common media types, including ``falcon.MEDIA_JSON``,
+        ``falcon.MEDIA_MSGPACK``, ``falcon.MEDIA_YAML``,
+        ``falcon.MEDIA_XML``, ``falcon.MEDIA_HTML``,
+        ``falcon.MEDIA_JS``, ``falcon.MEDIA_TEXT``,
+        ``falcon.MEDIA_JPEG``, ``falcon.MEDIA_PNG``,
+        and ``falcon.MEDIA_GIF``.
         """)
 
     etag = header_property(
@@ -713,17 +716,17 @@ class Response(object):
         """Value to use for the Vary header.
 
         Set this property to an iterable of header names. For a single
-        asterisk or field value, simply pass a single-element ``list`` or
-        ``tuple``.
+        asterisk or field value, simply pass a single-element ``list``
+        or ``tuple``.
 
-        "Tells downstream proxies how to match future request headers
-        to decide whether the cached response can be used rather than
-        requesting a fresh one from the origin server."
+        The "Vary" header field in a response describes what parts of
+        a request message, aside from the method, Host header field,
+        and request target, might influence the origin server's
+        process for selecting and representing this response.  The
+        value consists of either a single asterisk ("*") or a list of
+        header field names (case-insensitive).
 
-        (Wikipedia)
-
-        See also: http://goo.gl/NGHdL
-
+        (See also: RFC 7231, Section 7.1.4)
         """,
         format_header_value_list)
 

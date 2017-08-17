@@ -36,15 +36,19 @@ from falcon.util.misc import get_argnames
 class API(object):
     """This class is the main entry point into a Falcon-based app.
 
-    Each API instance provides a callable WSGI interface and a routing engine.
+    Each API instance provides a callable WSGI interface and a routing
+    engine.
 
-    Args:
-        media_type (str, optional): Default media type to use as the value for
-            the Content-Type header on responses (default 'application/json').
-            It is possible to use default types like falcon.MEDIA_YAML, falcon.MEDIA_XML etc.
-        middleware(object or list, optional): One or more objects
-            (instantiated classes) that implement the following middleware
-            component interface::
+    Keyword Arguments:
+        media_type (str): Default media type to use as the
+            value for the Content-Type header on responses (default
+            'application/json'). The ``falcon`` module provides a
+            number of constants for common media types, such as
+            ``falcon.MEDIA_MSGPACK``, ``falcon.MEDIA_YAML``,
+            ``falcon.MEDIA_XML``, etc.
+        middleware(object or list): Either a single object or a list
+            of objects (instantiated classes) that implement the
+            following middleware component interface::
 
                 class ExampleComponent(object):
                     def process_request(self, req, resp):
@@ -93,36 +97,38 @@ class API(object):
                                 request; otherwise False.
                         \"\"\"
 
-            See also :ref:`Middleware <middleware>`.
+            (See also: :ref:`Middleware <middleware>`)
 
-        request_type (Request, optional): ``Request``-like class to use instead
+        request_type (Request): ``Request``-like class to use instead
             of Falcon's default class. Among other things, this feature
             affords inheriting from ``falcon.request.Request`` in order
             to override the ``context_type`` class variable.
             (default ``falcon.request.Request``)
 
-        response_type (Response, optional): ``Response``-like class to use
+        response_type (Response): ``Response``-like class to use
             instead of Falcon's default class. (default
             ``falcon.response.Response``)
 
-        router (object, optional): An instance of a custom router
+        router (object): An instance of a custom router
             to use in lieu of the default engine.
-            See also: :ref:`Routing <routing>`.
+            (See also: :ref:`Custom Routers <routing_custom>`)
 
         independent_middleware (bool): Set to ``True`` if response
             middleware should be executed independently of whether or
-            not request middleware raises an exception.
+            not request middleware raises an exception (default
+            ``False``).
 
     Attributes:
         req_options: A set of behavioral options related to incoming
-            requests. See also: :py:class:`~.RequestOptions`
+            requests. (See also: :py:class:`~.RequestOptions`)
         resp_options: A set of behavioral options related to outgoing
-            responses. See also: :py:class:`~.ResponseOptions`
+            responses. (See also: :py:class:`~.ResponseOptions`)
         router_options: Configuration options for the router. If a
             custom router is in use, and it does not expose any
             configurable options, referencing this attribute will raise
-            an instance of ``AttributeError``. See also:
-            :py:class:`falcon.routing.CompiledRouterOptions`.
+            an instance of ``AttributeError``.
+
+            (See also: :ref:`CompiledRouterOptions <compiled_router_options>`)
     """
 
     # PERF(kgriffs): Reference via self since that is faster than
@@ -179,7 +185,7 @@ class API(object):
         host an API or called directly in order to simulate requests when
         testing the API.
 
-        See also PEP 3333.
+        (See also: PEP 3333)
 
         Args:
             env (dict): A WSGI environment dictionary
@@ -306,80 +312,24 @@ class API(object):
     def add_route(self, uri_template, resource, *args, **kwargs):
         """Associates a templatized URI path with a resource.
 
-        Note:
-            The following information describes the behavior of
-            Falcon's default router.
+        Falcon routes incoming requests to resources based on a set of
+        URI templates. If the path requested by the client matches the
+        template for a given route, the request is then passed on to the
+        associated resource for processing.
 
-        A resource is an instance of a class that defines various
-        "responder" methods, one for each HTTP method the resource
-        allows. Responder names start with `on_` and are named according to
-        which HTTP method they handle, as in `on_get`, `on_post`, `on_put`,
-        etc.
+        If no route matches the request, control then passes to a
+        default responder that simply raises an instance of
+        :class:`~.HTTPNotFound`.
 
-        Note:
-            If your resource does not support a particular
-            HTTP method, simply omit the corresponding responder and
-            Falcon will reply with "405 Method not allowed" if that
-            method is ever requested.
-
-        Responders must always define at least two arguments to receive
-        :class:`~.Request` and :class:`~.Response` objects, respectively.
-        For example::
-
-            def on_post(self, req, resp):
-                pass
-
-        The :class:`~.Request` object represents the incoming HTTP
-        request. It exposes properties and methods for examining headers,
-        query string parameters, and other metadata associated with
-        the request. A file-like stream is also provided for reading
-        any data that was included in the body of the request.
-
-        The :class:`~.Response` object represents the application's
-        HTTP response to the above request. It provides properties
-        and methods for setting status, header and body data. The
-        :class:`~.Response` object also exposes a dict-like
-        :attr:`~.Response.context` property for passing arbitrary
-        data to hooks and middleware methods. This property could be
-        used, for example, to provide a resource representation to a
-        middleware component that would then serialize the
-        representation according to the client's preferred media type.
-
-        Note:
-            Rather than directly manipulate the :class:`~.Response`
-            object, a responder may raise an instance of either
-            :class:`~.HTTPError` or :class:`~.HTTPStatus`.
-
-        In addition to the standard `req` and `resp` parameters, if the
-        route's template contains field expressions, any responder that
-        desires to receive requests for that route must accept arguments
-        named after the respective field names defined in the template.
-
-        A field expression consists of a bracketed field name. For
-        example, given the following template::
-
-            /user/{name}
-
-        A PUT request to "/user/kgriffs" would be routed to::
-
-            def on_put(self, req, resp, name):
-                pass
-
-        Individual path segments may contain one or more field
-        expressions, and fields need not span the entire path
-        segment. For example::
-
-            /repos/{org}/{repo}/compare/{usr0}:{branch0}...{usr1}:{branch1}
-            /serviceRoot/People('{name}')
-
-        Note:
-            Because field names correspond to argument names in responder
-            methods, they must be valid Python identifiers.
+        (See also: :ref:`Routing <routing>`)
 
         Args:
             uri_template (str): A templatized URI. Care must be
                 taken to ensure the template does not mask any sink
-                patterns, if any are registered (see also `add_sink`).
+                patterns, if any are registered.
+
+                (See also: :meth:`~.add_sink`)
+
             resource (instance): Object which represents a REST
                 resource. Falcon will pass "GET" requests to on_get,
                 "PUT" requests to on_put, etc. If any HTTP methods are not
@@ -438,8 +388,9 @@ class API(object):
 
                 Warning:
                     If the prefix overlaps a registered route template,
-                    the route will take precedence and mask the sink
-                    (see also `add_route`).
+                    the route will take precedence and mask the sink.
+
+                    (See also: :meth:`~.add_route`)
 
         """
 
